@@ -5,10 +5,6 @@ from sympy import symbols, Eq, solve
 from gpiozero import Servo
 from gpiozero.pins.pigpio import PiGPIOFactory
 
-# =================================================
-# 1. Servo Hardware Layer
-# =================================================
-
 class ServoController:
     def __init__(self):
         factory = PiGPIOFactory()
@@ -16,6 +12,8 @@ class ServoController:
         self.servo1 = Servo(13, pin_factory=factory, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)
         self.servo2 = Servo(14, pin_factory=factory, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)
         self.servo3 = Servo(15, pin_factory=factory, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)
+        self.servo4 = Servo(16, pin_factory=factory, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)
+        self.servo5 = Servo(17, pin_factory=factory, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)
 
         self.center_all()
 
@@ -23,6 +21,8 @@ class ServoController:
         self.servo1.value = 0
         self.servo2.value = 0
         self.servo3.value = 0
+        self.servo4.value = 0
+        self.servo5.value = 0
 
     def set_joint_angles(self, q):
         # q[] in radians
@@ -30,6 +30,8 @@ class ServoController:
         self.servo1.value = q[0] / (math.pi/2)
         self.servo2.value = q[1] / (math.pi/2)
         self.servo3.value = q[2] / (math.pi/2)
+        self.servo4.value = q[3] / (math.pi/2)
+        self.servo5.value = q[4] / (math.pi/2)
 
 # =================================================
 # 2. Robot Kinematics (DH, FK, Jacobian)

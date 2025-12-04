@@ -14,8 +14,8 @@ servo5 = Servo(17, pin_factory=factory, min_pulse_width=0.5/1000, max_pulse_widt
 servo1.value = 0
 servo2.value = 0
 servo3.value = 0
-servo4.value = 0
-servo5.value = 0
+servo4.value = 0.1
+servo5.value = -0.1
 
 #current position
 O = np.array([[servo1.value],
@@ -41,10 +41,10 @@ def get_values(Fdeg, Ideg, Ft, It, Fvel, Ivel):
     return list
 
 def getJacobianT():
-    J_A = np.cross(rotAxisA, O - jointAPos)
-    J_B = CrossProduct(rotAxisB, endEffectorPos - jointBPos)
-    J_C = np.cross(rotAxisC, O - jointCPos)
-    J = np.array([[1],[2],[]])
+    J_A = np.cross(rotAxisA, O - servo1.value)
+    J_B = np.cross(rotAxisB, O - servo2.value)
+    J_C = np.cross(rotAxisC, O - servo3.value)
+    J = np.array([[],[],[]])
     J.addColumn(J_A)
     J.addColumn(J_B)
     J.addColumn(J_C)
@@ -67,7 +67,7 @@ def open():
     return 0
 
 def close():
-    servo4.value = -0.1
+    servo4.value = 0.1
     servo5.value = -0.1
     return 0
 
