@@ -1,4 +1,5 @@
 from sympy import symbols, Eq, solve
+import math
 
 def get_values(Fdeg, Ideg, Ft, It, Fvel, Ivel):
     a0, a1, a2, a3 = symbols('a0, a1, a2, a3')

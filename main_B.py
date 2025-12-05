@@ -1,6 +1,7 @@
 #imports
 import math
 from math import sin, cos, tan, atan, acos, asin, sqrt, pi
+from sympy import symbols, Eq, solve
 import time
 import numpy as np
 from gpiozero import Servo
@@ -69,8 +70,7 @@ def close():
     return 0
 
 #Code Start----
-#modified DH parameters
-#a, alpha, d, theta
+#modified DH parameters - a, alpha, d, theta
 mDH = np.array([[0, 0, 67.5, 180],
                 [-22.5, 90, 0, 0],
                 [113.1, 0, 0, 0],
@@ -91,3 +91,16 @@ J = np.array([[round(-r * cos(beta) * sin(alpha), 4), round(-r * sin(beta) * cos
               [0, round(r * cos(beta), 4), round(sin(beta), 4)]])
 
 J_i = np.linalg.inv(J)
+print(alpha / 90)
+
+
+theta1, theta2 = symbols('theta1, theta2')
+eq1 = Eq(atan(alpha - 55 * sin(theta1 + theta2)) / (beta - 113.1 * cos(theta1 + theta2)), theta1)
+eq2 = Eq(theta1 + theta2, sqrt(alpha ** 2 + beta ** 2))
+d = solve(eq1, eq2)
+list = [*d.values()]
+print(list)
+
+servo1.value = alpha / 90
+servo2.value = angle1
+servo3.value = angle2

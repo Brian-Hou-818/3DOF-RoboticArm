@@ -2,6 +2,7 @@ import math
 from math import sin, cos, tan, atan, acos, asin, sqrt, pi
 import time
 import numpy as np
+from sympy import symbols, Eq, solve
 
 move_X = int(input("X: "))
 move_Y = int(input("Y: "))
@@ -16,4 +17,14 @@ print(r, alpha, beta)
 J = np.array([[round(-r * cos(beta) * sin(alpha), 4), round(-r * sin(beta) * cos(alpha), 4), round(cos(beta) * cos(alpha), 4)],
               [round(r * cos(beta) * cos(alpha), 4), round(-r * sin(beta) * sin(alpha), 4), round(cos(beta) * sin(alpha), 4)],
               [0, round(r * cos(beta), 4), round(sin(beta), 4)]])
-print(J)
+
+J_i = np.linalg.inv(J)
+print(alpha / 90)
+
+
+theta1, theta2 = symbols('theta1, theta2')
+eq1 = Eq(atan(beta - 55 * sin((theta1 + theta2) * pi / 180)) / (alpha - 113.1 * cos((theta1 + theta2) * pi / 180)), theta1)
+eq2 = Eq(theta1 + theta2, sqrt(alpha ** 2 + beta ** 2))
+d = solve((eq1, eq2), (theta1, theta2))
+list = [*d.values()]
+print(list)
