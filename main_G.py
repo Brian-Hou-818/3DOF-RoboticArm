@@ -1,162 +1,135 @@
-import numpy as np
+# ---------- IK + control for 3-DOF turret + 2-pitch arm ----------
 import math
+import numpy as np
 import time
-from sympy import symbols, Eq, solve
 from gpiozero import Servo
 from gpiozero.pins.pigpio import PiGPIOFactory
 
-class ServoController:
-    def __init__(self):
-        factory = PiGPIOFactory()
+# ---- Robot geometry (from your message) ----
+base_h = 30.0          # mm, joint1 axis above ground
+a_offset = -22.5       # mm offset from joint1->joint2 along X (negative means back)
+l1 = 67.5              # mm, first link length (shoulder -> elbow)
+l2 = 113.1             # mm, second link length (elbow -> wrist)
 
-        self.servo1 = Servo(13, pin_factory=factory, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)
-        self.servo2 = Servo(14, pin_factory=factory, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)
-        self.servo3 = Servo(15, pin_factory=factory, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)
-        self.servo4 = Servo(16, pin_factory=factory, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)
-        self.servo5 = Servo(17, pin_factory=factory, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)
+# ---- Servo calibration (tweak these per servo) ----
+# For each controlled joint (servo1 = base yaw, servo2 = shoulder, servo3 = elbow)
+# neutral_deg is the angle which should map to servo.value = 0
+# direction is 1 or -1 to flip sign if servo orientation is reversed
+# travel_half_deg is the half-range of the servo's usable motion (SG90 ≈ 90° each side)
+factory = PiGPIOFactory()
+servo1 = Servo(13, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
+servo2 = Servo(14, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
+servo3 = Servo(15, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
+servo_cfg = {
+    'base'    : {'servo': servo1, 'neutral_deg': 0.0,   'direction': 1,  'travel_half_deg': 90.0},
+    'shoulder': {'servo': servo2, 'neutral_deg': 0.0,   'direction': -1, 'travel_half_deg': 90.0},
+    'elbow'   : {'servo': servo3, 'neutral_deg': 0.0,   'direction': 1,  'travel_half_deg': 90.0},
+}
+# Adjust neutral_deg so that that physical servo position corresponds to the desired 0° logical angle.
 
-        self.center_all()
+def deg(rad): return rad * 180.0 / math.pi
+def rad(deg): return deg * math.pi / 180.0
 
-    def center_all(self):
-        self.servo1.value = 0
-        self.servo2.value = 0
-        self.servo3.value = 0
-        self.servo4.value = 0
-        self.servo5.value = 0
-
-    def set_joint_angles(self, q):
-        # q[] in radians
-        # convert radians → servo value (-1 to 1)
-        self.servo1.value = q[0] / (math.pi/2)
-        self.servo2.value = q[1] / (math.pi/2)
-        self.servo3.value = q[2] / (math.pi/2)
-        self.servo4.value = q[3] / (math.pi/2)
-        self.servo5.value = q[4] / (math.pi/2)
-
-# =================================================
-# 2. Robot Kinematics (DH, FK, Jacobian)
-# =================================================
-
-class RobotKinematics:
-    def __init__(self):
-        #modified DH parameters
-        self.mdh = [[180, 0, 0, 67.5],
-                    [0, 90, -22.5, 0],
-                    [0, 0, 113.1, 0]]
-
-    # 2.1: Compute single MDH transform
-    def mdh_transform(self, theta, alpha, r, d):
-        T = np.array([[np.cos(theta), -np.sin(theta)*np.cos(alpha),  np.sin(theta)*np.sin(alpha), r*np.cos(theta)],
-                      [np.sin(theta),  np.cos(theta)*np.cos(alpha), -np.cos(theta)*np.sin(alpha), r*np.sin(theta)],
-                      [0,              np.sin(alpha),                np.cos(alpha),               d],
-                      [0,              0,                            0,                           1]])
-        return T
-
-    # 2.2: Forward kinematics
-    def forward_kinematics(self, q):
-        T = np.eye(4)
-        for i, joint in enumerate(self.mdh):
-            theta, alpha, r, d = joint
-            T = T @ self.mdh_transform(q[i] + theta, alpha, r, d)
-        return T
-
-    # 2.3: Jacobian (geometric)
-    def jacobian(self, q):
-        """
-        Compute Jacobian from DH parameters.
-        This is the standard method:
-        Jv_i = z_(i-1) × (p_end - p_(i-1))
-        Jw_i = z_(i-1)
-        """
-        # TODO: implement fully
-        pass
-
-# =================================================
-# 3. Inverse Kinematics (Jacobian IK)
-# =================================================
-
-class JacobianIKSolver:
-    def __init__(self, kin):
-        self.kin = kin
-
-    def step(self, q, target_pos, alpha=0.1):
-        """
-        q = current joint angles (3x1)
-        target_pos = desired XYZ (3x1)
-        """
-        T = self.kin.forward_kinematics(q)
-        current_pos = T[0:3, 3]
-
-        error = target_pos - current_pos
-
-        J = self.kin.jacobian(q)
-        dq = alpha * (J.T @ error)
-
-        return q + dq
-
-    def solve(self, initial_q, target_pos, tol=1e-3, max_iters=100):
-        q = initial_q.copy()
-
-        for i in range(max_iters):
-            T = self.kin.forward_kinematics(q)
-            pos = T[0:3, 3]
-            if np.linalg.norm(target_pos - pos) < tol:
-                break
-
-            q = self.step(q, target_pos)
-
-        return q
-
-# =================================================
-# 4. Trajectory Generation (Optional)
-# =================================================
-
-def cubic_trajectory(q0, qf, t, tf):
+def to_servo_value(angle_deg, neutral_deg, direction, travel_half_deg):
     """
-    Returns q(t) via cubic interpolation.
+    Map logical angle (deg) -> servo.value (-1..1)
+    Uses neutral and travel_half to allow calibration.
     """
-    a0 = q0
-    a1 = 0
-    a2 = 3*(qf - q0)/(tf**2)
-    a3 = -2*(qf - q0)/(tf**3)
+    # relative to neutral
+    rel = angle_deg - neutral_deg
+    # clamp to travel
+    max_rel = travel_half_deg
+    if rel > max_rel: rel = max_rel
+    if rel < -max_rel: rel = -max_rel
+    # map to -1..1
+    return direction * (rel / travel_half_deg)
 
-    return a0 + a1*t + a2*t**2 + a3*t**3
+def reachable_planar(r):
+    """Check planar reachability ignoring numerical tolerance."""
+    return abs(l1 - l2) <= r <= (l1 + l2)
 
-# =================================================
-# 5. Main Control Loop
-# =================================================
+def solve_planar_2link(xp, zp):
+    """
+    Solve planar 2-link (links along local X and Z) for angles theta2, theta3 (radians)
+    xp: forward distance in rotated plane (mm)
+    zp: vertical distance above joint2 axis (mm)
+    returns list of (theta2, theta3) solutions (radians) - may return empty
+    Conventions:
+      - theta2 measured from local X axis (positive lifts Z)
+      - theta3 is joint angle relative to link1 (so the total pitch at link2 is theta2 + theta3)
+    """
+    r = math.hypot(xp, zp)
+    if not reachable_planar(r):
+        return []  # unreachable
+    # clamp cos to [-1,1]
+    cos_q3 = (r*r - l1*l1 - l2*l2) / (2 * l1 * l2)
+    cos_q3 = max(-1.0, min(1.0, cos_q3))
+    q3_a = math.acos(cos_q3)      # elbow-down
+    q3_b = -q3_a                  # elbow-up
 
-def main():
-    # Initialize modules
-    servos = ServoController()
-    kin = RobotKinematics()
-    ik = JacobianIKSolver(kin)
+    sols = []
+    for q3 in (q3_a, q3_b):
+        k1 = l1 + l2 * math.cos(q3)
+        k2 = l2 * math.sin(q3)
+        q2 = math.atan2(zp, xp) - math.atan2(k2, k1)
+        sols.append((q2, q3))
+    return sols
 
-    # Initial joint angles
-    q = np.array([0.0, 0.0, 0.0])   # radians
+# ---- Main interactive loop (replaces your sympy part) ----
+while True:
+    try:
+        move_X = float(input("X (mm): "))
+        move_Y = float(input("Y (mm): "))
+        move_Z = float(input("Z (mm): ")) + 3.0   # keep your +3 offset if needed
+    except ValueError:
+        print("Invalid input, try again.")
+        continue
 
-    # ---- Get user target ----
-    x = float(input("Target X: "))
-    y = float(input("Target Y: "))
-    z = float(input("Target Z: "))
-    target_pos = np.array([x, y, z])
+    # Step 1: yaw (theta1) to point toward XY target
+    theta1 = math.atan2(move_Y, move_X)   # radians, turret yaw
+    # planar distance from base (before accounting offsets)
+    rho = math.hypot(move_X, move_Y)
 
-    # ---- Solve IK ----
-    q_target = ik.solve(q, target_pos)
+    # Step 2: compute coordinates in the arm's pitch plane (after removing yaw)
+    # Remove the fixed offset 'a_offset' along the forward direction.
+    # xp is forward distance from joint2 axis to wrist projection
+    xp = rho - a_offset   # note: if a_offset is negative this adds distance
+    # vertical distance from joint2 axis to target
+    zp = move_Z - base_h
 
-    # ---- Smooth move with cubic trajectory ----
-    tf = 2.0  # seconds
-    t = 0
-    dt = 0.02
+    print(f"rho={rho:.2f} xp={xp:.2f} zp={zp:.2f}")
 
-    while t < tf:
-        q_t = cubic_trajectory(q, q_target, t, tf)
-        servos.set_joint_angles(q_t)
-        t += dt
-        time.sleep(dt)
+    # Step 3: solve planar 2-link for theta2 (shoulder) and theta3 (elbow)
+    planar_sols = solve_planar_2link(xp, zp)
+    if not planar_sols:
+        print("Target unreachable in planar cross-section (too far/too close).")
+        continue
 
-    servos.set_joint_angles(q_target)
+    # choose a solution strategy: prefer elbow-down (first solution)
+    theta2, theta3 = planar_sols[0]   # radians
+    # You can choose planar_sols[1] for the alternate elbow pose
 
+    # Convert to degrees for printing and servo mapping
+    deg1 = deg(theta1)
+    deg2 = deg(theta2)
+    deg3 = deg(theta3)
 
-if __name__ == "__main__":
-    main()
+    print(f"IK solutions (deg): yaw={deg1:.2f}, shoulder={deg2:.2f}, elbow={deg3:.2f}")
+
+    # Map to servo values using calibration
+    sv_base = to_servo_value(deg1, servo_cfg['base']['neutral_deg'],
+                             servo_cfg['base']['direction'], servo_cfg['base']['travel_half_deg'])
+    sv_shoulder = to_servo_value(deg2, servo_cfg['shoulder']['neutral_deg'],
+                                 servo_cfg['shoulder']['direction'], servo_cfg['shoulder']['travel_half_deg'])
+    sv_elbow = to_servo_value(deg3, servo_cfg['elbow']['neutral_deg'],
+                              servo_cfg['elbow']['direction'], servo_cfg['elbow']['travel_half_deg'])
+
+    # Print values and move servos
+    print(f"servo values: base={sv_base:.3f}, shoulder={sv_shoulder:.3f}, elbow={sv_elbow:.3f}")
+
+    servo1.value = sv_base
+    servo2.value = sv_shoulder
+    servo3.value = sv_elbow
+
+    # small delay to avoid flooding the servo bus
+    time.sleep(0.05)

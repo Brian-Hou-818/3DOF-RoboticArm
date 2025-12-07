@@ -18,7 +18,7 @@ servo2.value = 0
 servo3.value = 0
 servo4.value = 0.1
 servo5.value = -0.1
-print("----- Servo Reset Complete -----")
+print("<----- Servo Reset Complete ----->")
 
 #Functions----
 
@@ -60,7 +60,7 @@ while True:
     J = np.array([[round(-r * math.cos(beta) * math.sin(alpha), 4), round(-r * math.sin(beta) * math.cos(alpha), 4), round(math.cos(beta) * math.cos(alpha), 4)],
                 [round(r * math.cos(beta) * math.cos(alpha), 4), round(-r * math.sin(beta) * math.sin(alpha), 4), round(math.cos(beta) * math.sin(alpha), 4)],
                 [0, round(r * math.cos(beta), 4), round(math.sin(beta), 4)]])
-
+   
     #J_i = np.linalg.inv(J)
 
     theta1, theta2 = symbols('theta1, theta2')
