@@ -20,10 +20,14 @@ factory = PiGPIOFactory()
 servo1 = Servo(13, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
 servo2 = Servo(14, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
 servo3 = Servo(15, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
+servo4 = Servo(16, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
+servo5 = Servo(17, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
 servo_cfg = {
-    'base'    : {'servo': servo1, 'neutral_deg': 0.0,   'direction': 1,  'travel_half_deg': 90.0},
-    'shoulder': {'servo': servo2, 'neutral_deg': 0.0,   'direction': -1, 'travel_half_deg': 90.0},
-    'elbow'   : {'servo': servo3, 'neutral_deg': 0.0,   'direction': 1,  'travel_half_deg': 90.0},
+    'base'     : {'servo': servo1, 'neutral_deg': 0.0,   'direction': 1,  'travel_half_deg': 90.0},
+    'shoulder' : {'servo': servo2, 'neutral_deg': 0.0,   'direction': -1, 'travel_half_deg': 90.0},
+    'elbow'    : {'servo': servo3, 'neutral_deg': 0.0,   'direction': 1,  'travel_half_deg': 90.0},
+    'clawLeft' : {'servo': servo4, 'enutral_deg': -0.01, 'direction': 1,  'trave;_half_deg': 90.0},
+    'clawRight': {'servo': servo5, 'enutral_deg': 0.01,  'direction': -1, 'trave;_half_deg': 90.0},
 }
 # Adjust neutral_deg so that that physical servo position corresponds to the desired 0° logical angle.
 
@@ -31,10 +35,6 @@ def deg(rad): return rad * 180.0 / math.pi
 def rad(deg): return deg * math.pi / 180.0
 
 def to_servo_value(angle_deg, neutral_deg, direction, travel_half_deg):
-    """
-    Map logical angle (deg) -> servo.value (-1..1)
-    Uses neutral and travel_half to allow calibration.
-    """
     # relative to neutral
     rel = angle_deg - neutral_deg
     # clamp to travel
