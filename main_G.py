@@ -11,11 +11,7 @@ a_offset = -22.5       # mm offset from joint1->joint2 along X (negative means b
 l1 = 67.5              # mm, first link length (shoulder -> elbow)
 l2 = 113.1             # mm, second link length (elbow -> wrist)
 
-# ---- Servo calibration (tweak these per servo) ----
-# For each controlled joint (servo1 = base yaw, servo2 = shoulder, servo3 = elbow)
-# neutral_deg is the angle which should map to servo.value = 0
-# direction is 1 or -1 to flip sign if servo orientation is reversed
-# travel_half_deg is the half-range of the servo's usable motion (SG90 ≈ 90° each side)
+# ---- Setup Joints ----
 factory = PiGPIOFactory()
 servo1 = Servo(13, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
 servo2 = Servo(14, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
@@ -26,26 +22,21 @@ servo_cfg = {
     'base'     : {'servo': servo1, 'neutral_deg': 0.0,   'direction': 1,  'travel_half_deg': 90.0},
     'shoulder' : {'servo': servo2, 'neutral_deg': 0.0,   'direction': -1, 'travel_half_deg': 90.0},
     'elbow'    : {'servo': servo3, 'neutral_deg': 0.0,   'direction': 1,  'travel_half_deg': 90.0},
-    'clawLeft' : {'servo': servo4, 'enutral_deg': -0.01, 'direction': 1,  'trave;_half_deg': 90.0},
+    'clawLeft' : {'servo': servo4, 'enutral_deg': 0.01, 'direction': 1,  'trave;_half_deg': 90.0},
     'clawRight': {'servo': servo5, 'enutral_deg': 0.01,  'direction': -1, 'trave;_half_deg': 90.0},
 }
-# Adjust neutral_deg so that that physical servo position corresponds to the desired 0° logical angle.
 
 def deg(rad): return rad * 180.0 / math.pi
 def rad(deg): return deg * math.pi / 180.0
 
-def to_servo_value(angle_deg, neutral_deg, direction, travel_half_deg):
-    # relative to neutral
+def to_servo_value(angle_deg, neutral_deg, direction, travel_half_deg):#servo movement
     rel = angle_deg - neutral_deg
-    # clamp to travel
     max_rel = travel_half_deg
     if rel > max_rel: rel = max_rel
     if rel < -max_rel: rel = -max_rel
-    # map to -1..1
     return direction * (rel / travel_half_deg)
 
-def reachable_planar(r):
-    """Check planar reachability ignoring numerical tolerance."""
+def reachable_planar(r):#check reachability
     return abs(l1 - l2) <= r <= (l1 + l2)
 
 def solve_planar_2link(xp, zp):
@@ -80,7 +71,7 @@ while True:
     try:
         move_X = float(input("X (mm): "))
         move_Y = float(input("Y (mm): "))
-        move_Z = float(input("Z (mm): ")) + 3.0   # keep your +3 offset if needed
+        move_Z = float(input("Z (mm): ")) + 3.0
     except ValueError:
         print("Invalid input, try again.")
         continue
