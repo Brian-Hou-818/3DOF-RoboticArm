@@ -1,35 +1,65 @@
-import math
-import time
 import numpy as np
-from sympy import symbols, Eq, solve, sin, cos, tan, atan, acos, asin, sqrt, pi
+import math
 
-move_X = int(input("X: "))
-move_Y = int(input("Y: "))
-move_Z = int(input("Z: "))
 
-r = round(sqrt(move_Z ** 2 + sqrt(move_X ** 2 + move_Y ** 2) ** 2), 2)
-alpha = round(math.atan(move_X / move_Y) * (180 / pi), 2)
-beta = round(math.acos(sqrt(move_X ** 2 + move_Y ** 2) / r) * (180 / pi), 2)
-print(r, alpha, beta)
+theta1 = 0
+theta2 = 0
+theta3 = 0
+mDH = np.array([
+    [-22.5, 90, 30, theta1],
+    [67.5, 0, 0, theta2],
+    [113.1, 0, 0, theta3],
+    [55, 90, 0, 0]])
 
-#jacobian
-J = np.array([[round(-r * math.cos(beta) * math.sin(alpha), 4), round(-r * math.sin(beta) * math.cos(alpha), 4), round(math.cos(beta) * math.cos(alpha), 4)],
-              [round(r * math.cos(beta) * math.cos(alpha), 4), round(-r * math.sin(beta) * math.sin(alpha), 4), round(math.cos(beta) * math.sin(alpha), 4)],
-              [0, round(r * math.cos(beta), 4), round(math.sin(beta), 4)]])
+# ---- Robot Geometry ----
+baseH = mDH[0][2]
+aOffset = mDH[0][0]
+l1 = mDH[1][0]
+l2 = mDH[2][0]
 
-#J_i = np.linalg.inv(J)
+def reachable(r):
+    return l2 - l1 <= r <= l1 + l2
 
-theta1, theta2 = symbols('theta1, theta2')
-eq1 = Eq(atan(beta - 55 * sin((theta1 + theta2) * pi / 180)) / (alpha - 113.1 * cos((theta1 + theta2) * pi / 180)), theta1)
-eq2 = Eq(theta1 + theta2, sqrt(alpha ** 2 + beta ** 2))
-d = solve((eq1, eq2), (theta1, theta2))
-list1 = list(d[0])
+def deg(rad): return rad * 180 / math.pi
+def rad(deg): return deg * math.pi / 180
 
-servo1.value = alpha / 90
-if list1[0] > list1[1]:
-    servo2.value = list1[0]
-    servo3.value = list1[1]
+def twoJointIK(xp, zp):
+    r = math.hypot(xp, zp)
+    if not reachable(r):
+        return []
 
-else:
-    servo2.values = list1[1]
-    servo3.values = list1[0]
+    cosQ3 = (r * r - l1 ** 2 - l2 ** 2) / (2 * l1 * l2)
+    cosQ3 = max(-1.0, min(1.0, cosQ3))
+    q3 = math.acos(cosQ3)
+
+    alpha = math.atan2(zp, xp)
+    beta = math.acos((l1 ** 2 + r * r - l2 ** 2) / (2 * l1 * r))
+
+    q2 = alpha - beta
+    q2_alt = alpha + beta
+    q3_alt = -q3
+
+    return [(q2, q3), (q2_alt, q3_alt)]
+
+while True:
+    move_X = float(input("X: "))
+    move_Y = float(input("Y: "))
+    move_Z = float(input("Z: ")) + 30
+
+    theta1 = math.atan2(move_Y, move_X)
+    baseDeg = deg(theta1)
+
+    rho = math.hypot(move_X, move_Y)
+    xp = rho - aOffset
+    zp = move_Z - baseH
+
+    sols = twoJointIK(xp, zp)
+    if sols:
+        print("Target reachable")
+    else:
+        print("Target unreachable.\n")
+
+    t2, t3 = sols[0]
+    shoulderDeg = deg(t2)
+    elbowDeg = deg(t3)
+
