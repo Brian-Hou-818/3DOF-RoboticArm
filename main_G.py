@@ -1,11 +1,10 @@
 from gpiozero import Servo
 from time import sleep
 from gpiozero.pins.pigpio import PiGPIOFactory
+import numpy as np
 import math
 
 factory = PiGPIOFactory()
-
-import numpy as np
 
 # ---- MDH Parameters ----
 # a, alpha, d, theta
@@ -25,31 +24,29 @@ aOffset = mDH[0][0]
 l1 = mDH[1][0]
 l2 = mDH[2][0]
 
-# ---- Servo Configuration ----
+# ---- Servo Config ----
 servoCfg = {
     'joint1': {'neutral': 90, 'dir': 1, 'travelHalf': 90},
     'joint2': {'neutral': 90, 'dir': 1, 'travelHalf': 90},
     'joint3': {'neutral': 90, 'dir': 1, 'travelHalf': 90},
     'clawLeft': {'neutral': 90, 'dir': 1, 'travelHalf': 60},
-    'clawRight': {'neutral': 90, 'dir': -1, 'travelHalf': 60}
-}
-
+    'clawRight': {'neutral': 90, 'dir': -1, 'travelHalf': 60}}
 servo1 = Servo(13, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000, pin_factory = factory)
 servo2 = Servo(14, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000, pin_factory = factory)
 servo3 = Servo(15, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000, pin_factory = factory)
+print("\n<---- Servo Calibration Complete ---->\n")
 
-print("<---- Servo Calibration Complete ---->")
 
 #converts deg to neutral value
-def servoConvert(angleDeg, neutral, direction, travelHalfDeg):
-    diff = angleDeg - neutral
+def servoConvert(angle, neutral, direction, travelHalfDeg):
+    diff = angle - neutral
     diff = max(-travelHalfDeg, min(travelHalfDeg, diff))
     norm = diff / travelHalfDeg
     return direction * norm
 
 #deg conversion
-def deg(rad): return rad * 180 / math.pi
-def rad(deg): return deg * math.pi / 180
+def deg(rad):
+    return rad * 180 / math.pi
 
 def reachable(r):
     return l2 - l1 <= r <= l1 + l2
@@ -111,7 +108,6 @@ def morseToLetter(morse):
     '__...': '7',
     '___..': '8',
     '____.': '9',}
-
     return str(morse_dict[morse])
 
 def location(letter):
@@ -184,11 +180,11 @@ while True:
     elbowDeg = deg(t3)
 
     servo1.value = servoConvert(baseDeg, servoCfg['joint1']['neutral'], servoCfg['joint1']['dir'], servoCfg['joint1']['travelHalf'])
-    sleep(0.3)
+    sleep(0.2)
     servo2.value = servoConvert(shoulderDeg, servoCfg['joint2']['neutral'], servoCfg['joint2']['dir'], servoCfg['joint2']['travelHalf'])
-    sleep(0.3)
+    sleep(0.2)
     servo3.value = servoConvert(elbowDeg, servoCfg['joint3']['neutral'], servoCfg['joint3']['dir'], servoCfg['joint3']['travelHalf'])
-    sleep(0.3)
+    sleep(0.2)
 
     print("Base: %.2f, Shoulder: %.2f, Elbow: %.2f\n", baseDeg, shoulderDeg, elbowDeg)
     sleep(0.05)
