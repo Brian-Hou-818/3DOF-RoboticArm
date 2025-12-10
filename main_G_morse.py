@@ -68,14 +68,100 @@ def twoJointIK(xp, zp):
 
     return [(q2, q3), (q2_alt, q3_alt)]
 
+def morseToLetter(morse):
+    morse_dict = {
+    '._': 'A',
+    '_...': 'B',
+    '_._.': 'C',
+    '_..': 'D',
+    '.': 'E',
+    '.._.': 'F',
+    '__.': 'G',
+    '....': 'H',
+    '..': 'I',
+    '.___': 'J',
+    '_._': 'K',
+    '._..': 'L',
+    '__': 'M',
+    '_.': 'N',
+    '___': 'O',
+    '.__.': 'P',
+    '__._': 'Q',
+    '._.': 'R',
+    '...': 'S',
+    '_': 'T',
+    '.._': 'U',
+    '..._': 'V',
+    '.__': 'W',
+    '_.._': 'X',
+    '_.__': 'Y',
+    '__..': 'Z',
+    '_____': '0',
+    '.____': '1',
+    '..___': '2',
+    '...__': '3',
+    '...._': '4',
+    '.....': '5',
+    '_....': '6',
+    '__...': '7',
+    '___..': '8',
+    '____.': '9',}
+    return str(morse_dict[morse])
+
+def location(letter):
+    floor = -30
+    location_dict = {
+        'A': [0, -120, floor],
+        'B': [31.06, 115.91, floor],
+        'C': [60, 103.92, floor],
+        'D': [84.85, 84.85, floor],
+        'E': [103.92, 60, floor],
+        'F': [115.91, 31.06, floor],
+        'G': [0, 120, floor],
+        'H': [115.91, -31.06, floor],
+        'I': [103.92, -60, floor],
+        'J': [84.85, -84.95, floor],
+        'K': [60, 103.92, floor],
+        'L': [31.06, -115.91, floor],
+
+        'M': [0, 100, floor],
+        'N': [25.88, 96.59, floor],
+        'O': [50, 86.6, floor],
+        'P': [70.71, 70.71, floor],
+        'Q': [86.6, 50, floor],
+        'R': [96.59, 25.88, floor],
+        'S': [100, 0, floor],
+        'T': [96.59, -25.88, floor],
+        'U': [86.6, -50, floor],
+        'V': [70.71, -70.71, floor],
+        'W': [50, -86.6, floor],
+        'X': [25.88, -96.59, floor],
+
+        'Y': [0, 80, floor],
+        'Z': [20.71, 77.24, floor],
+        '1': [40, 69.28, floor],
+        '2': [56.57, 56.57, floor],
+        '3': [69.28, 40, floor],
+        '4': [77.27, 20.41, floor],
+        '6': [80, 0, floor],
+        '5': [77.27, -20.41, floor],
+        '7': [69.28, -40, floor],
+        '8': [56.57, -56.57, floor],
+        '9': [40, -69.28, floor],
+        '10': [20.71, -77.24, floor]}
+    return location_dict[letter]
 
 # Main Loop
 while True:
     inputLetter = str(input("Morse Code: "))
-    move_X = float(input("X: "))
-    move_Y = float(input("Y: "))
-    move_Z = float(input("Z: ")) + 30
+    # move_X = float(input("X: "))
+    # move_Y = float(input("Y: "))
+    # move_Z = float(input("Z: ")) + 30
 
+    move_X = float(location(morseToLetter(inputLetter))[0])
+    move_Y = float(location(morseToLetter(inputLetter))[1])
+    move_Z = float(location(morseToLetter(inputLetter))[2])
+    print("here")
     print(move_X, move_Y, move_Z)
 
     theta1 = math.atan2(move_Y, move_X)

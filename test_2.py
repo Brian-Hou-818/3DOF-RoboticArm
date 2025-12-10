@@ -1,57 +1,19 @@
-def morseToLetter(morse):
-    morse_dict = {
-    '._': 'A',
-    '_...': 'B',
-    '_._.': 'C',
-    '_..': 'D',
-    '.': 'E',
-    '.._.': 'F',
-    '__.': 'G',
-    '....': 'H',
-    '..': 'I',
-    '.___': 'J',
-    '_._': 'K',
-    '._..': 'L',
-    '__': 'M',
-    '_.': 'N',
-    '___': 'O',
-    '.__.': 'P',
-    '__._': 'Q',
-    '._.': 'R',
-    '...': 'S',
-    '_': 'T',
-    '.._': 'U',
-    '..._': 'V',
-    '.__': 'W',
-    '_.._': 'X',
-    '_.__': 'Y',
-    '__..': 'Z',
-    '_____': '0',
-    '.____': '1',
-    '..___': '2',
-    '...__': '3',
-    '...._': '4',
-    '.....': '5',
-    '_....': '6',
-    '__...': '7',
-    '___..': '8',
-    '____.': '9',}
+from gpiozero import Servo
+from time import sleep
+from gpiozero.pins.pigpio import PiGPIOFactory
+import numpy as np
+import math
 
-    return morse_dict[morse]
+factory = PiGPIOFactory()
 
-def location(letter):
-    location_dict = {
-        'A': [3, 4, -15],
-        'B': [7, 8, -15]}
-    return location_dict[letter]
+servoCfg = {
+    'joint1': {'neutral': 90, 'dir': 1, 'travelHalf': 90},
+    'joint2': {'neutral': 90, 'dir': 1, 'travelHalf': 90},
+    'joint3': {'neutral': 90, 'dir': 1, 'travelHalf': 90}}
+servo1 = Servo(13, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000, pin_factory = factory)
+servo2 = Servo(14, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000, pin_factory = factory)
+servo3 = Servo(15, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000, pin_factory = factory)
 
-inputLetter = str(input("Morse Code: "))
-    # move_X = float(input("X: "))
-    # move_Y = float(input("Y: "))
-    # move_Z = float(input("Z: ")) + 3
-
-move_X = location(morseToLetter(inputLetter))[0]
-move_Y = location(morseToLetter(inputLetter))[1]
-move_Z = location(morseToLetter(inputLetter))[2]
-
-print(move_X, move_Y)
+sleep(3)
+servo2.value = 0.5
+sleep(5)
