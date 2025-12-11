@@ -72,10 +72,10 @@ if __name__ == "__main__":
 
         if input == 'triangle':
             x = 100
-            y = (0, -50, 0)
+            y = (50, -50, 0)
             z = (150, 150, 100)
             for i in range(3):
-                for k in range(3):
+                for k in range(len(z)):
                     move(x, y[k], z[k])
                     time.sleep(0.5)
 
@@ -107,4 +107,23 @@ if __name__ == "__main__":
             for k in range(points):
                 move(x, circle_points[k][1], circle_points[k][2])
                 time.sleep(0.001)
+
+        elif input == 'square':
+            x = 100
+            y = (50, -50, -50, 50)
+            z = (150, 150, 100, 100)
+            for i in range(3):
+                for k in range(len(z)):
+                    move(x, y[k], z[k])
+                    time.sleep(0.5)
+
+        elif input == 'line':
+            x = 100
+            y = (i for i in range(-75, 75, 1))
+            z = 50
+            for i in range(3):
+                for k in range(len(y)):
+                    move(x, y[k], z)
+                    time.sleep(0.05)
+
 
