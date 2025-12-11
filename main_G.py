@@ -25,6 +25,14 @@ L1 = mDH[2][0] #link 2 length 113.1
 L2 = mDH[3][0] #link 3 length 55
 base_height = mDH[0][2]  #link 1 offset 67.5
 
+# mDH = np.array([-22.5, 90, 67.5, 0],
+#                [113.1, 0, 0, 0],
+#                [55, 0, 0, 0])
+
+# L1 = mDH[1][0] #link 2 length 113.1
+# L2 = mDH[2][0] #link 3 length 55
+# base_height = mDH[0][2]  #link 1 offset 67.5
+
 #Angle to servo language
 def angle_to_servo(angle_deg):
     return max(min(angle_deg / 90.0, 1), -1)
