@@ -4,9 +4,9 @@ import math
 import time
 import numpy as np
 
-factory = PiGPIOFactory()
 
 #Servo Setup
+factory = PiGPIOFactory()
 servo1 = Servo(13, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
 servo2 = Servo(14, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
 servo3 = Servo(15, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
@@ -16,7 +16,7 @@ servo3.value = 0
 print("<----- Servo Reset Complete ----->")
 
 #mDH parameters table
-mDH = np.array([0, 0, 67.5, 180],
+mDH = np.array([0, 0, 67.5, 0],
                [-22.5, 90, 0, 180],
                [113.1, 0, 0, 0],
                [55, 0, 0, 0])
@@ -48,11 +48,10 @@ def IK(x, y, z):
 def move(x, y, z):
     r = math.hypot(x, y)
     z_offset = z - base_height
-    distance = math.hypot(r, z_offset)
-    distance = math.hypot(r, z_offset)
+    alpha = math.hypot(r, z_offset)
     
     #Reachability
-    if distance > (L1 + L2) or distance < abs(L1 - L2):
+    if alpha > (L1 + L2) or alpha < abs(L1 - L2):
         print("Out of reach")
         return
     
