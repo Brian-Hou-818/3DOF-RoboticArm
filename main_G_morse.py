@@ -1,186 +1,87 @@
 from gpiozero import Servo
-from time import sleep
 from gpiozero.pins.pigpio import PiGPIOFactory
-import numpy as np
+from time import sleep
 import math
 
+# ---- Servo setup ----
 factory = PiGPIOFactory()
+servo_kwargs = {'pin_factory': factory}
 
-# ---- MDH Parameters ----
-# a, alpha, d, theta
-theta1 = 0
-theta2 = 0
-theta3 = 0
-mDH = np.array([[0, 0, 67.5, 180],
-                [-22.5, 90, 0, 0],
-                [113.1, 0, 0, 0],
-                [55, 0, 0, 180]])
+joint1 = Servo(13, **servo_kwargs)
+joint2 = Servo(14, **servo_kwargs)
+joint3 = Servo(15, **servo_kwargs)
 
-# ---- Robot Geometry ----s
-baseH = mDH[0][2]
-aOffset = mDH[0][0]
-l1 = mDH[1][0]
-l2 = mDH[2][0]
+# ---- Servo direction inversion flags ----
+invert_joint1 = False
+invert_joint2 = False
+invert_joint3 = False
 
-# ---- Servo Config ----
-servoCfg = {
-    'joint1': {'neutral': 90, 'dir': 1, 'travelHalf': 90},
-    'joint2': {'neutral': 90, 'dir': 1, 'travelHalf': 90},
-    'joint3': {'neutral': 90, 'dir': 1, 'travelHalf': 90}}
-servo1 = Servo(13, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000, pin_factory = factory)
-servo2 = Servo(14, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000, pin_factory = factory)
-servo3 = Servo(15, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000, pin_factory = factory)
-print("\n<---- Servo Calibration Complete ---->\n")
+# MDH = np.array([
+#     [-22.5,    90,  67.5, 0.0],    # Joint 1
+#     [113.3,   0.0,   0.0, 0.0],    # Joint 2
+#     [55.0,    0.0,   0.0, 0.0]     # Joint 3
+# ])
 
+# ---- Link lengths (mm) ----
+d1 = 67.5   # base height
+a2 = 113.3  # shoulder to elbow
+a3 = 55     # elbow to pointer
 
-#converts deg to neutral value
-def servoConvert(angle, neutral, direction, travelHalfDeg):
-    diff = angle - neutral
-    diff = max(-travelHalfDeg, min(travelHalfDeg, diff))
-    norm = diff / travelHalfDeg
-    return direction * norm
+# ---- Helper function ----
+def deg_to_servo_angle(theta_deg, invert=False):
+    """Convert degrees to servo value (-1 to 1) and optionally invert"""
+    value = max(min(theta_deg / 90.0 - 1, 1), -1)
+    if invert:
+        value = -value
+    return value
 
-#deg conversion
-def deg(rad):
-    return rad * 180 / math.pi
+# ---- Inverse Kinematics ----
+def inverse_kinematics(x, y, z):
+    """Compute θ1, θ2, θ3 in degrees for a reachable point"""
+    # Base rotation
+    theta1 = math.atan2(y, x)
+    
+    # Planar distance for joints 2 and 3
+    r = math.sqrt(x**2 + y**2)
+    z_eff = z - d1
+    R = math.sqrt(r**2 + z_eff**2)
+    
+    # Check reachability
+    if R > (a2 + a3) or R < abs(a2 - a3):
+        raise ValueError("Target is out of reach")
+    
+    # Elbow (theta3) using cosine law
+    cos_theta3 = (R**2 - a2**2 - a3**2) / (2 * a2 * a3)
+    theta3 = math.atan2(math.sqrt(1 - cos_theta3**2), cos_theta3)  # elbow-up
+    
+    # Shoulder (theta2)
+    theta2 = math.atan2(z_eff, r) - math.atan2(a3 * math.sin(theta3), a2 + a3 * math.cos(theta3))
+    
+    # Convert to degrees
+    return math.degrees(theta1), math.degrees(theta2), math.degrees(theta3)
 
-def reachable(r):
-    return abs(l1 - l2) <= r <= (l1 + l2)
+# ---- Move function ----
+def move_to(x, y, z):
+    try:
+        t1, t2, t3 = inverse_kinematics(x, y, z)
+        print(f"Moving to angles: θ1={t1:.2f}, θ2={t2:.2f}, θ3={t3:.2f}")
+        
+        joint1.value = deg_to_servo_angle(t1, invert_joint1)
+        joint2.value = deg_to_servo_angle(t2, invert_joint2)
+        joint3.value = deg_to_servo_angle(t3, invert_joint3)
+        
+        sleep(1)
+    except ValueError as e:
+        print(e)
 
-#Joints 2 and 3 IK solving
-def twoJointIK(xp, zp):
-    r = math.hypot(xp, zp)
-    if not reachable(r):
-        return []
-
-    cosQ3 = (r ** 2  - l1 ** 2 - l2 ** 2) / (2 * l1 * l2)
-    cosQ3 = max(-1.0, min(1.0, cosQ3))
-    q3 = math.acos(cosQ3)
-
-    alpha = math.atan2(zp, xp)
-    beta = math.acos((l1 ** 2 + r ** 2 - l2 ** 2) / (2 * l1 * r))
- 
-    q2 = alpha - beta
-    q2_alt = alpha + beta
-    q3_alt = -q3
-
-    return [(q2, q3), (q2_alt, q3_alt)]
-
-def morseToLetter(morse):
-    morse_dict = {
-    '._': 'A',
-    '_...': 'B',
-    '_._.': 'C',
-    '_..': 'D',
-    '.': 'E',
-    '.._.': 'F',
-    '__.': 'G',
-    '....': 'H',
-    '..': 'I',
-    '.___': 'J',
-    '_._': 'K',
-    '._..': 'L',
-    '__': 'M',
-    '_.': 'N',
-    '___': 'O',
-    '.__.': 'P',
-    '__._': 'Q',
-    '._.': 'R',
-    '...': 'S',
-    '_': 'T',
-    '.._': 'U',
-    '..._': 'V',
-    '.__': 'W',
-    '_.._': 'X',
-    '_.__': 'Y',
-    '__..': 'Z',
-    '_____': '0',
-    '.____': '1',
-    '..___': '2',
-    '...__': '3',
-    '...._': '4',
-    '.....': '5',
-    '_....': '6',
-    '__...': '7',
-    '___..': '8',
-    '____.': '9',}
-    return str(morse_dict[morse])
-
-def location(letter):
-    floor = -30
-    location_dict = {
-        'A': [0, -120, floor],
-        'B': [31.06, 115.91, floor],
-        'C': [60, 103.92, floor],
-        'D': [84.85, 84.85, floor],
-        'E': [103.92, 60, floor],
-        'F': [115.91, 31.06, floor],
-        'G': [0, 120, floor],
-        'H': [115.91, -31.06, floor],
-        'I': [103.92, -60, floor],
-        'J': [84.85, -84.95, floor],
-        'K': [60, 103.92, floor],
-        'L': [31.06, -115.91, floor],
-
-        'M': [0, 100, floor],
-        'N': [25.88, 96.59, floor],
-        'O': [50, 86.6, floor],
-        'P': [70.71, 70.71, floor],
-        'Q': [86.6, 50, floor],
-        'R': [96.59, 25.88, floor],
-        'S': [100, 0, floor],
-        'T': [96.59, -25.88, floor],
-        'U': [86.6, -50, floor],
-        'V': [70.71, -70.71, floor],
-        'W': [50, -86.6, floor],
-        'X': [25.88, -96.59, floor],
-
-        'Y': [0, 80, floor],
-        'Z': [20.71, 77.24, floor],
-        '1': [40, 69.28, floor],
-        '2': [56.57, 56.57, floor],
-        '3': [69.28, 40, floor],
-        '4': [77.27, 20.41, floor],
-        '6': [80, 0, floor],
-        '5': [77.27, -20.41, floor],
-        '7': [69.28, -40, floor],
-        '8': [56.57, -56.57, floor],
-        '9': [40, -69.28, floor],
-        '10': [20.71, -77.24, floor]}
-    return location_dict[letter]
-
-# Main Loop
-while True:
-    inputLetter = str(input("Morse Code: "))
-    # move_X = float(input("X: "))
-    # move_Y = float(input("Y: "))
-    # move_Z = float(input("Z: ")) + 30
-
-    move_X = float(location(morseToLetter(inputLetter))[0])
-    move_Y = float(location(morseToLetter(inputLetter))[1])
-    move_Z = float(location(morseToLetter(inputLetter))[2])
-    print("here")
-    print(move_X, move_Y, move_Z)
-
-    theta1 = math.atan2(move_Y, move_X)
-    baseDeg = deg(theta1)
-
-    rho = math.hypot(move_X, move_Y)
-    xp = rho
-    zp = move_Z - baseH
-
-    sols = twoJointIK(xp, zp)
-    if not sols:
-        print("Target unreachable.\n")
-        continue
-
-    t2, t3 = sols[0]
-    shoulderDeg = deg(t2)
-    elbowDeg = deg(t3)
-
-    servo1.value = servoConvert(baseDeg, servoCfg['joint1']['neutral'], servoCfg['joint1']['dir'], servoCfg['joint1']['travelHalf'])
-    servo2.value = servoConvert(shoulderDeg, servoCfg['joint2']['neutral'], servoCfg['joint2']['dir'], servoCfg['joint2']['travelHalf'])
-    servo3.value = servoConvert(elbowDeg, servoCfg['joint3']['neutral'], servoCfg['joint3']['dir'], servoCfg['joint3']['travelHalf'])
-
-    print("Base: %.2f, Shoulder: %.2f, Elbow: %.2f\n", baseDeg, shoulderDeg, elbowDeg)
-    sleep(0.05)
+# ---- Main loop ----
+if __name__ == "__main__":
+    while True:
+        try:
+            x = float(input("Enter X (mm): "))
+            y = float(input("Enter Y (mm): "))
+            z = float(input("Enter Z (mm): "))
+            move_to(x, y, z)
+        except KeyboardInterrupt:
+            print("Exiting...")
+            break

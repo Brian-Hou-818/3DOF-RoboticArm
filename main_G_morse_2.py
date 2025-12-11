@@ -11,11 +11,10 @@ theta1 = 0
 theta2 = 0
 theta3 = 0
 
-mDH = np.array([
-    [-22.5, 90, 30, theta1],
-    [67.5, 0, 0, theta2],
-    [113.1, 0, 0, theta3],
-    [55, 90, 0, 0]])
+mDH = np.array([[0, 0, 67.5, 180],
+                [-22.5, 90, 0, 0],
+                [113.1, 0, 0, 0],
+                [55, 0, 0, 180]])
 
 # ---- Robot Geometry ----
 baseH = mDH[0][2]
@@ -86,7 +85,7 @@ def morseToLetter(morse):
 
 # --- Letter coordinates ---
 def location(letter):
-    floor = 0  # z-coordinate
+    floor = 100  # z-coordinate
     # Example half-circle layout (3 rows x 12 columns)
     # Adjust spacing as needed
     location_dict = {

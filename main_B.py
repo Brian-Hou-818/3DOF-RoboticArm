@@ -11,34 +11,20 @@ factory = PiGPIOFactory()
 servo1 = Servo(13, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
 servo2 = Servo(14, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
 servo3 = Servo(15, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
-servo4 = Servo(16, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
-servo5 = Servo(17, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
 servo1.value = 0
 servo2.value = 0
 servo3.value = 0
-servo4.value = 0.1
-servo5.value = -0.1
 print("<----- Servo Reset Complete ----->")
 
 #Functions----
 
-def open():
-    servo4.value = -0.3
-    servo5.value = 0.3
-    return 0
-
-def close():
-    servo4.value = 0.1
-    servo5.value = -0.1
-    return 0
-
-#Code Start----
 #modified DH parameters - a, alpha, d, theta
-mDH = np.array([[0, 0, 67.5, 180],
-                [-22.5, 90, 0, 0],
-                [113.1, 0, 0, 0],
-                [55, 0, 0, 90]])
-
+mDH = np.array([
+    [0.0,     0.0,  67.5, 180.0],
+    [-22.5,  90.0,   0.0,   0.0],
+    [113.1,   0.0,   0.0,   0.0],
+    [55.0,    0.0,   0.0,   0.0]
+])
 while True:
     move_X = float(input("X: "))
     move_Y = float(input("Y: "))

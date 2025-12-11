@@ -1,19 +1,25 @@
 from gpiozero import Servo
-from time import sleep
 from gpiozero.pins.pigpio import PiGPIOFactory
-import numpy as np
 import math
+from time import sleep
 
+# Set up PiGPIO
 factory = PiGPIOFactory()
 
-servoCfg = {
-    'joint1': {'neutral': 90, 'dir': 1, 'travelHalf': 90},
-    'joint2': {'neutral': 90, 'dir': 1, 'travelHalf': 90},
-    'joint3': {'neutral': 90, 'dir': 1, 'travelHalf': 90}}
-servo1 = Servo(13, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000, pin_factory = factory)
-servo2 = Servo(14, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000, pin_factory = factory)
-servo3 = Servo(15, min_pulse_width = 0.5 / 1000, max_pulse_width = 2.5 / 1000, pin_factory = factory)
+# Servo pins
+servo1 = Servo(13, pin_factory=factory)
+servo2 = Servo(14, pin_factory=factory)
+servo3 = Servo(15, pin_factory=factory)
 
+servo1.value = 0
+servo2.value = 0
+servo3.value = 0
 sleep(3)
-servo2.value = 0.5
-sleep(5)
+
+
+servo1.value = -1
+sleep(1)
+servo2.value = -0.5
+sleep(1)
+servo3.value = 1
+sleep(1)
