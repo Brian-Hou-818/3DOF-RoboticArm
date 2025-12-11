@@ -2,11 +2,11 @@ from gpiozero import Servo
 from gpiozero.pins.pigpio import PiGPIOFactory
 import math
 import time
+import numpy as np
 
-# Set up PiGPIO
 factory = PiGPIOFactory()
 
-# Servo pins
+#Servo Setup
 servo1 = Servo(13, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
 servo2 = Servo(14, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
 servo3 = Servo(15, pin_factory = factory, min_pulse_width = 0.5/1000, max_pulse_width = 2.5/1000)
@@ -15,100 +15,97 @@ servo2.value = 0
 servo3.value = 0
 print("<----- Servo Reset Complete ----->")
 
-# ---- Arm MDH Parameters ----
-L1 = 113.3  # link 2
-L2 = 55.0   # link 3
-base_height = 67.5  # link 1 offset (Z height)
+#mDH parameters table
+mDH = np.array([0, 0, 67.5, 180],
+               [-22.5, 90, 0, 180],
+               [113.1, 0, 0, 0],
+               [55, 0, 0, 0])
 
-# Servo calibration
+L1 = mDH[2][0] #link 2 length 113.1
+L2 = mDH[3][0] #link 3 length 55
+base_height = mDH[0][2]  #link 1 offset 67.5
+
+#Angle to servo language
 def angle_to_servo(angle_deg):
-    """Convert angle in degrees to servo value (-1 to 1)."""
     return max(min(angle_deg / 90.0, 1), -1)
 
-# ---- Inverse Kinematics ----
-def ik(x, y, z):
+#IK
+def IK(x, y, z):
     theta1 = math.degrees(math.atan2(y, x))
     r = math.hypot(x, y)
     z_offset = z - base_height
     
-    D = (r**2 + z_offset**2 - L1**2 - L2**2) / (2 * L1 * L2)
+    D = (r ** 2 + z_offset ** 2 - L1 ** 2 - L2 ** 2) / (2 * L1 * L2)
     if abs(D) > 1:
-        print("Target out of reach")
+        print("Out of reach")
         return None
     
-    theta3 = math.degrees(math.atan2(math.sqrt(1 - D**2), D))
+    theta3 = math.degrees(math.atan2(math.sqrt(1 - D ** 2), D))
     theta2 = math.degrees(math.atan2(z_offset, r) - math.atan2(L2 * math.sin(math.radians(theta3)), L1 + L2 * math.cos(math.radians(theta3))))
     return theta1, theta2, theta3
 
-# ---- Move Arm ----
-def move_arm(x, y, z):
+#Move arm to coordinate
+def move(x, y, z):
     r = math.hypot(x, y)
     z_offset = z - base_height
     distance = math.hypot(r, z_offset)
     distance = math.hypot(r, z_offset)
     
-    # Check reachability
+    #Reachability
     if distance > (L1 + L2) or distance < abs(L1 - L2):
-        print("Target out of reach")
+        print("Out of reach")
         return
     
-    angles = ik(x, y, z)
+    angles = IK(x, y, z)
     theta1, theta2, theta3 = angles
     servo1.value = angle_to_servo(theta1)
-    servo2.value = -angle_to_servo(theta2)
-    servo3.value = angle_to_servo(theta3)
+    servo2.value = angle_to_servo(theta2)
+    servo3.value = -angle_to_servo(theta3)
     print(f"Moved to angles: {theta1:.2f}, {theta2:.2f}, {theta3:.2f}")
-    print(angle_to_servo(theta1), angle_to_servo(theta2), angle_to_servo(theta3))
 
-# ---- Interactive Input ----
+#main
 if __name__ == "__main__":
-    print("Enter target coordinates in mm (x y z), or 'q' to quit.")
+    print("Enter desired shape, or 'q' to quit.")
     while True:
-        user_input = input("Coordinates: ")
-        if user_input.lower() == 'q':
+        input = input("shape: ")
+        if input == 'q':
             break
-        # try:
-        #     x_str, y_str, z_str = user_input.strip().split()
-        #     x, y, z = float(x_str) - 22.5, float(y_str), float(z_str) - 10
-        #     move_arm(x, y, z)
-        # except ValueError:
-        #     print("Invalid input. Please enter three numbers separated by spaces.")
 
-        if user_input == 'triangle':
+        if input == 'triangle':
             x = 100
             y = (0, -50, 0)
             z = (150, 150, 100)
             for i in range(3):
                 for k in range(3):
-                    move_arm(x, y[k], z[k])
+                    move(x, y[k], z[k])
                     time.sleep(0.5)
 
-        elif user_input == 'star':
+        elif input == 'star':
             x = 135
             y = (0, 40, -50, 50, -40)
             z = (150, 100, 130, 130, 100)
             for i in range(3):
                 for k in range(len(z)):
-                    move_arm(x, y[k], z[k])
+                    move(x, y[k], z[k])
                     time.sleep(0.5)
 
-        elif user_input == 'circle':
+        elif input == 'circle':
             x = 135
-            radius = 30  # Radius of the circle
+            radius = 30
             center_y = 0
             center_z = 120
-            num_points = 100  # Number of points to approximate the circle
+            points = 100
 
             circle_points = []
 
-            for i in range(num_points):
-                angle = 2 * math.pi * i / num_points
+            for i in range(points):
+                angle = 2 * math.pi * i / points
                 y = center_y + radius * math.cos(angle)
                 z = center_z + radius * math.sin(angle)
                 circle_points.append((x, y, z))
 
             print(circle_points)
-            for k in range(num_points):
-                move_arm(x, circle_points[k][1], circle_points[k][2])
+            for k in range(points):
+                move(x, circle_points[k][1], circle_points[k][2])
                 time.sleep(0.001)
 
