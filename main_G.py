@@ -16,18 +16,18 @@ servo3.value = 0
 print("<----- Servo Reset Complete ----->")
 
 #mDH parameters table
-mDH = np.array([0, 0, 67.5, 0],
-               [-22.5, 90, 0, 180],
+mDH = np.array([[0, 0, 67.5, 0],
+               [-22.5, 90, 0, 0],
                [113.1, 0, 0, 0],
-               [55, 0, 0, 0])
+               [55, 0, 0, 0]])
 
 L1 = mDH[2][0] #link 2 length 113.1
 L2 = mDH[3][0] #link 3 length 55
 base_height = mDH[0][2]  #link 1 offset 67.5
 
-# mDH = np.array([-22.5, 90, 67.5, 0],
+# mDH = np.array([[-22.5, 90, 67.5, 0],
 #                [113.1, 0, 0, 0],
-#                [55, 0, 0, 0])
+#                [55, 0, 0, 0]])
 
 # L1 = mDH[1][0] #link 2 length 113.1
 # L2 = mDH[2][0] #link 3 length 55
@@ -66,19 +66,19 @@ def move(x, y, z):
     angles = IK(x, y, z)
     theta1, theta2, theta3 = angles
     servo1.value = angle_to_servo(theta1)
-    servo2.value = angle_to_servo(theta2)
-    servo3.value = -angle_to_servo(theta3)
+    servo2.value = -angle_to_servo(theta2)
+    servo3.value = angle_to_servo(theta3)
     print(f"Moved to angles: {theta1:.2f}, {theta2:.2f}, {theta3:.2f}")
 
 #main
 if __name__ == "__main__":
     print("Enter desired shape, or 'q' to quit.")
     while True:
-        input = input("shape: ")
-        if input == 'q':
+        inputt = str(input("shape: "))
+        if inputt == 'q':
             break
 
-        if input == 'triangle':
+        if inputt == 'triangle':
             x = 100
             y = (50, -50, 0)
             z = (150, 150, 100)
@@ -87,7 +87,7 @@ if __name__ == "__main__":
                     move(x, y[k], z[k])
                     time.sleep(0.5)
 
-        elif input == 'star':
+        elif inputt == 'star':
             x = 135
             y = (0, 40, -50, 50, -40)
             z = (150, 100, 130, 130, 100)
@@ -96,7 +96,7 @@ if __name__ == "__main__":
                     move(x, y[k], z[k])
                     time.sleep(0.5)
 
-        elif input == 'circle':
+        elif inputt == 'circle':
             x = 135
             radius = 30
             center_y = 0
@@ -116,7 +116,7 @@ if __name__ == "__main__":
                 move(x, circle_points[k][1], circle_points[k][2])
                 time.sleep(0.001)
 
-        elif input == 'square':
+        elif inputt == 'square':
             x = 100
             y = (50, -50, -50, 50)
             z = (150, 150, 100, 100)
@@ -125,13 +125,14 @@ if __name__ == "__main__":
                     move(x, y[k], z[k])
                     time.sleep(0.5)
 
-        elif input == 'line':
-            x = 100
-            y = (i for i in range(-75, 75, 1))
-            z = 50
-            for i in range(3):
-                for k in range(len(y)):
-                    move(x, y[k], z)
-                    time.sleep(0.05)
+        elif inputt == 'line':
+            x = 120
+            y = list(range(-100, 100))
+            z = 120
+            for k in range(len(y)):
+                move(x, y[k], z)
+                time.sleep(0.05)
 
-
+        servo1.value = 0
+        servo2.value = 0
+        servo3.value = 0
